@@ -1,0 +1,126 @@
+import tkinter as tk
+from tkinter import messagebox, simpledialog
+import json
+
+# Data storage (simulating a database with JSON file)
+DB_FILE = 'inventory.json'
+
+def load_data():
+    try:
+        with open(DB_FILE, 'r') as file:
+            return json.load(file)
+    except FileNotFoundError:
+        return {"products": []}
+
+def save_data(data):
+    with open(DB_FILE, 'w') as file:
+        json.dump(data, file, indent=4)
+
+class InventoryApp:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Inventory Management System")
+
+        self.data = load_data()
+
+        self.create_widgets()
+
+    def create_widgets(self):
+        # Frame for buttons
+        frame = tk.Frame(self.root)
+        frame.pack(pady=10)
+
+        self.add_button = tk.Button(frame, text="Add Product", command=self.add_product)
+        self.add_button.grid(row=0, column=0, padx=5)
+
+        self.edit_button = tk.Button(frame, text="Edit Product", command=self.edit_product)
+        self.edit_button.grid(row=0, column=1, padx=5)
+
+        self.delete_button = tk.Button(frame, text="Delete Product", command=self.delete_product)
+        self.delete_button.grid(row=0, column=2, padx=5)
+
+        self.report_button = tk.Button(frame, text="Generate Report", command=self.generate_report)
+        self.report_button.grid(row=0, column=3, padx=5)
+
+        self.refresh_button = tk.Button(frame, text="Refresh", command=self.refresh_list)
+        self.refresh_button.grid(row=0, column=4, padx=5)
+
+        # Product listbox
+        self.product_list = tk.Listbox(self.root, width=50, height=10)
+        self.product_list.pack(pady=10)
+
+        self.refresh_list()
+
+    def add_product(self):
+        name = simpledialog.askstring("Product Name", "Enter product name:")
+        if not name:
+            return
+        
+        quantity = simpledialog.askinteger("Quantity", "Enter quantity:")
+        if quantity is None:
+            return
+
+        price = simpledialog.askfloat("Price", "Enter price:")
+        if price is None:
+            return
+
+        self.data['products'].append({
+            "name": name,
+            "quantity": quantity,
+            "price": price
+        })
+        save_data(self.data)
+        self.refresh_list()
+    
+    def edit_product(self):
+        selected_index = self.product_list.curselection()
+        if not selected_index:
+            messagebox.showwarning("Selection Error", "No product selected.")
+            return
+        
+        product = self.data['products'][selected_index[0]]
+        new_name = simpledialog.askstring("Product Name", "Enter new product name:", initialvalue=product['name'])
+        if new_name:
+            product['name'] = new_name
+        
+        new_quantity = simpledialog.askinteger("Quantity", "Enter new quantity:", initialvalue=product['quantity'])
+        if new_quantity is not None:
+            product['quantity'] = new_quantity
+        
+        new_price = simpledialog.askfloat("Price", "Enter new price:", initialvalue=product['price'])
+        if new_price is not None:
+            product['price'] = new_price
+        
+        save_data(self.data)
+        self.refresh_list()
+
+    def delete_product(self):
+        selected_index = self.product_list.curselection()
+        if not selected_index:
+            messagebox.showwarning("Selection Error", "No product selected.")
+            return
+        
+        del self.data['products'][selected_index[0]]
+        save_data(self.data)
+        self.refresh_list()
+
+    def generate_report(self):
+        low_stock_products = [p for p in self.data['products'] if p['quantity'] < 5]
+        report = "Low Stock Alert:\n"
+        if not low_stock_products:
+            report += "All products are well-stocked."
+        else:
+            for product in low_stock_products:
+                report += f"Product: {product['name']}, Quantity: {product['quantity']}\n"
+        
+        messagebox.showinfo("Report", report)
+
+    def refresh_list(self):
+        self.product_list.delete(0, tk.END)
+        for product in self.data['products']:
+            self.product_list.insert(tk.END, f"Name: {product['name']}, Quantity: {product['quantity']}, Price: {product['price']}")
+
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = InventoryApp(root)
+    root.mainloop()
